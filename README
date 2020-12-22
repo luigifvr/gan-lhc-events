@@ -1,0 +1,7 @@
+Run training.py to execute the training using the model defined in GAN.py.
+
+Invariants.py contains the functions used to get the invariants.
+
+Variables.py is used to define all the variables needed in the training such as the number of epochs.
+
+The classes and the functions used to read Les Houches events are saved in readLHE.py
