@@ -7,7 +7,7 @@ import invariants
 import GAN
 from GAN import *
 
-file = "ttbar_ex/Events/run_MT170/unweighted_events.lhe"
+file = "unweighted_events.lhe"
 init, evs = readLHE.readEvent(file)
 
 invar = np.zeros((len(evs),3))
