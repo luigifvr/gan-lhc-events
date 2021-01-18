@@ -1,5 +1,5 @@
 # GAN model for event generation
-- Deep convolutional model for pp &#8594 ttbar:
+### Deep convolutional model for *pp*→*tt̅*:
 Start training using:
 
 `
