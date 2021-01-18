@@ -8,7 +8,7 @@ def GetEnergySquared(event):
     try:
         p1 = event.particles[0].p
         p2 = event.particles[1].p
-        return 2*scalarProd(p1,p2)**2
+        return 2*scalarProd(p1,p2)
     except (AttributeError, TypeError):
         raise AssertionError("Input file is not an Event")
 
@@ -16,7 +16,7 @@ def GetMandelT(event):
     try:
         p1 = event.particles[0].p
         p3 = event.particles[2].p
-        return 2*scalarProd(p1,p3)**2
+        return -2*scalarProd(p1,p3)
     except (AttributeError, TypeError):
         raise AssertionError("Input file is not an Event")
 
