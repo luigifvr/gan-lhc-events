@@ -1,5 +1,5 @@
 # GAN model for event generation
-### Deep convolutional model for $pp\rightarrow t\bar{t}$:
+- Deep convolutional model for $pp\rightarrow t\bar{t}$:
 Start training using:
 
 `
