@@ -1,0 +1,27 @@
+#number of epochs
+epochs: hp.choice('epochs',[1,5,10,20])
+
+#LHE file of events
+file: ../ppttbar_10k_events.lhe
+
+#Number of examples to generate
+examples: 100000
+
+#optimizer for generator and discriminator
+optimizer: hp.choice('optimizer', ['Adam', 'SGD', 'RMSprop', 'Adagrad'])
+
+learning_rate: hp.choice('learning_rate', [0.1, 0.01, 0.001])
+
+#leaky ReLU 
+alpha: 0.2
+
+#latent space dimension
+noise_size: 100
+
+#activation function for the last layer of generator
+activation: tanh
+
+#dropout value
+dropout: 0.2
+
+batch_size: hp.choice('batch_size', [128, 256, 512])

@@ -17,7 +17,7 @@ class Particle():
     def __init__(self, val_labels):
         for key, val in val_labels.items():
             setattr(self, key, val)
-        self.p = [self.e, self.px, self.py, self.pz]
+        self.p = [self.e, np.sqrt(self.px**2 + self.py**2), self.pz]
 
 def NEvents(file):
     N = 0
@@ -28,8 +28,6 @@ def NEvents(file):
 
 def readEvent(file):
     labels = ['id', 'status', 'mother1', 'mother2', 'color1', 'color2', 'px', 'py', 'pz', 'e', 'm', 'time', 'spin']
-    ev = []
-    d_init = {}
     for _, block in xml.etree.ElementTree.iterparse(file):
         if block.tag == 'event':
             data = block.text.split('\n')[1:-1]
@@ -42,17 +40,13 @@ def readEvent(file):
                     val[labels[i]] = lin
                 part.append(Particle(val))
                 val = {}
-            ev.append(Event(part))
+            yield Event(part)
+
+def readInit(file):
+    d_init = {}
+    for _, block in xml.etree.ElementTree.iterparse(file):
         if block.tag == 'init':
             d_init['beamA'] = float(block.text.split()[2])
             d_init['beamB'] = float(block.text.split()[3])
     init = InitInfo(d_init)
-    return init, ev
-
-def readInit(file):
-    init = {}
-    for _, block in xml.etree.ElementTree.iterparse(file):
-        if block.tag == 'init':
-            init['beamA'] = block.text.split()[2]
-            init['beamB'] = block.text.split()[3]
     return init
