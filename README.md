@@ -21,9 +21,9 @@ Possible options are:
 
 ### Hyperopt scan of hyperparameters:
 Run an optimization of hyperparameters with hyperopt with:
-'
+`
 python3 hyperopt_scan.py <dict_setup.yaml>
-'
+`
 
 options:
-- '-e' max number of evaluations for hyperopt
+- `-e` max number of evaluations for hyperopt
