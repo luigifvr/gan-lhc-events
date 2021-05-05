@@ -7,15 +7,18 @@ import hist_cb
 import argparse
 import time
 import os
-from sklearn.preprocessing import MinMaxScaler
+import pickle
+from sklearn.preprocessing import MinMaxScaler, PowerTransformer, QuantileTransformer
+from sklearn.pipeline import make_pipeline
 
 parser = argparse.ArgumentParser(description=('pp -> t tbar GAN training'))
 parser.add_argument('file', help='path to LHE file')
 parser.add_argument('-b', '--batch', default='100', type=int)
-parser.add_argument('-i', '--iters', default='100', type=int)
+parser.add_argument('-i', '--iters', default='1', type=int)
 parser.add_argument('-e', '--epochs', default='100', type=int)
 parser.add_argument('-g', '--examples', default='10000', type=int)
-parser.add_argument('-k', '--checkpoint', default='./training_checkpoints')
+parser.add_argument('-p', '--path', default='./')
+parser.add_argument('-v', '--verbose', default='500', type=int)
 args = parser.parse_args()  
 
 file = args.file
@@ -23,102 +26,99 @@ batch = args.batch
 iters = args.iters
 epochs = args.epochs
 examples = args.examples
-checkpoint = args.checkpoint
+path = args.path
+verbose = args.verbose
 
-print('Training a DCGAN using events pp -> tt~ generated with Madgraph')
-print('Training info:')
-print('Batch size:', batch)
-print('Number of iterations:', iters)
-print('Number of epochs:', epochs)
-print('Number of examples to generate:', examples)
-print('Directory for checkpoints:', checkpoint)
+print('INFO: Training a DCGAN using events generated with Madgraph')
+print('INFO: LHE file:', file)
+print('INFO: Batch size:', batch)
+print('INFO: Number of iterations:', iters)
+print('INFO: Number of epochs:', epochs)
+print('INFO: Number of examples to generate:', examples)
+print('INFO: Outputs path:', path)
 
-def scaler(array):
-    scal = MinMaxScaler(feature_range=(-1,1))
-    scal.fit(array)
-    return scal.transform(array)
-
+# Output file with info of training
+def INFOoutput():
+    with open(path+'outputs/trainingINFO.txt','a') as info_file:
+        info_file.write("INFO: Input file name: {} \n".format(file))
+        info_file.write("INFO: Batch size: {} \n".format(batch))
+        info_file.write("INFO: Number of epochs: {} \n".format(epochs))
+        info_file.write("INFO: Total time for training: {:.2f} \n".format(total_time))
+        info_file.write("INFO: Preprocessing: \n")
+        for i in range(len(pipeline)):
+            info_file.write("		Scaler n. {} {} \n".format(i, pipeline[i]))
+        
+# Generator to get random noise of 'examples' size
 def seedGen(to_gen, noise):
     while 1:
-        yield tf.random.normal([to_gen, noise])
-        
+        yield tf.random.uniform([to_gen, noise])
+
+# Train step        
 def train_step(batch_data):
-    noise = tf.random.normal([batch, noise_size])
-    h_noise = tf.random.normal([int(batch/2), noise_size])
-    gen_data = generator(h_noise, training=True)
-    d_data = np.concatenate((batch_data, gen_data))
-    d_labels = np.concatenate((tf.ones(int(batch/2)), tf.zeros(int(batch/2))))
+    noise = tf.random.uniform([batch, noise_size])
+    gen_data = generator(noise, training=True)
     
     discriminator.trainable = True
-    discriminator.train_on_batch(gen_data, tf.zeros(int(batch/2)))
-    discriminator.train_on_batch(batch_data, tf.ones(int(batch/2)))
+    d_loss_g = discriminator.train_on_batch(gen_data, tf.zeros(int(batch)))
+    d_loss_r = discriminator.train_on_batch(batch_data, tf.ones(int(batch)))
+    d_loss = d_loss_g + d_loss_r
+   
+    discriminator.trainable = False
+    g_loss = gan.train_on_batch(noise, tf.ones(int(batch)))
+    with open(path+'outputs/losses.txt','a') as loss_file:
+           loss_file.write("{: >20} {: >20} \n".format(g_loss, d_loss))
 
-    gan.train_on_batch(noise, tf.ones(int(batch)))
+# Create output if missing
+if not os.path.exists(path):
+	os.makedirs(path)
+	os.makedirs(path+'outputs/')
+	os.makedirs(path+'outputs/hist/')
+	os.makedirs(path+'outputs/models/')
+	os.makedirs(path+'outputs/preprocess/')
 
-    d_loss_r, d_acc_r = discriminator.test_on_batch(batch_data, tf.ones(int(batch/2)))
-    d_loss_g, d_acc_g = discriminator.test_on_batch(gen_data, tf.zeros(int(batch/2)))
-    g_loss, g_acc = gan.test_on_batch(noise, tf.ones((batch)))	
-    with open('./outputs/g_loss.txt','a') as g_loss_file, open('./outputs/d_loss.txt', 'a') as d_loss_file, open('./outputs/d_acc.txt', 'a') as d_acc_file :
-           g_loss_file.write("{: >20} {: >20}".format(g_loss, g_acc))
-           g_loss_file.write('\n')
-           d_loss_file.write("{: >20} {:>20}".format(d_loss_r,d_loss_g))
-           d_loss_file.write('\n')
-           d_acc_file.write("{: >20} {:>20}".format(d_acc_r,d_acc_g))
-           d_acc_file.write('\n')
-        
+# Load and preprocess LHE file
 evs = readLHE.readEvent(file)
 init = readLHE.readInit(file)
 
 invar = np.zeros((readLHE.NEvents(file),3))
+i = 0
 for ev in evs:
-    i=0
     invar[i,0] = invariants.GetEnergySquared(ev)
     invar[i,1] = invariants.GetMandelT(ev)
     invar[i,2] = invariants.GetRapidity(init, ev)
     i += 1
 
-#invar[:,0] = (invar[:,0]-np.mean(invar[:,0]))/np.std(invar[:,0])
-#invar[:,1] = (invar[:,1]-np.mean(invar[:,1]))/np.std(invar[:,1])
-#invar[:,2] = (invar[:,2]-np.mean(invar[:,2]))/np.std(invar[:,2])
+pipeline = make_pipeline(PowerTransformer(standardize=True), MinMaxScaler((-1,1)))
+invar = pipeline.fit_transform(invar)
 
+with open(path+'outputs/preprocess/pipeline.pickle', 'wb') as pip:
+    pickle.dump(pipeline, pip)
 
-#invar[:,0] = scaler(invar[:,0])
-#invar[:,1] = scaler(invar[:,1])
-
-#invar = invar.reshape(-1, 2, 3, 1)
-
+#Define latent space dimension
 noise_size = 100 
+
+#Define models
 generator = GAN.generatore(noise_size)
 discriminator = GAN.discriminatore()
 gan = GAN.gan_model(generator, discriminator)
-ckpt = tf.train.Checkpoint(generator=generator,
-                                 discriminator=discriminator)
 
 seeds = seedGen(examples, noise_size)
 start = time.time()
 
-#pretrain
-#nse = tf.random.normal([len(invar), noise_size])
-#gend = generator(nse, training=True)
-#datas = np.concatenate((invar,gend))
-#labs = np.concatenate((tf.ones(len(invar)), tf.zeros(len(invar))))
-#discriminator.fit(datas, labs, epochs=1, batch_size=128)
-
-#hist_cb.hist_callback(invar[:100000], generator.predict(next(seeds), batch_size=512), 0)
+hist_cb.hist_callback(invar, generator.predict(next(seeds), batch_size=2048), 0, path=path)
 for epoch in range(epochs):
     for it in range(iters):
         row_shape = len(invar)
-        rnd_idx = np.random.choice(row_shape, size=int(batch/2), replace=False)
+        rnd_idx = np.random.choice(row_shape, size=int(batch), replace=False)
         dts = invar[rnd_idx,:]
         train_step(dts)
-    if (epoch+1) % 100 == 0 :
-        ckpt.save(file_prefix = os.path.join(checkpoint, "ckpt"))
-        print ('Epoch {} of {}. [{} sec]'.format(epoch, epochs, time.time()-start, ))
-    #if (epoch+1) % 50 == 0:
-        #hist_cb.hist_callback(invar[:100000], generator(next(seeds), batch_size=512), epoch) 
+    if (epoch+1) % verbose == 0 :
+        print ('INFO: Epoch {} of {}. [{} sec]'.format(epoch+1, epochs, time.time()-start, ))
+        hist_cb.hist_callback(invar, generator.predict(next(seeds), batch_size=2048), epoch+1, path=path) 
+        if epoch >= (epochs-verbose*50):
+            generator.save(path+'outputs/models/generator_{}.h5'.format(epoch+1))
 
-pred = generator.predict(next(seeds), batch_size=512)
-np.savetxt('outputs/pred.txt', pred)
+total_time = time.time()-start
+discriminator.save(path+'outputs/models/discriminator.h5')
 
-generator.save('outputs/generator.h5')
-discriminator.save('outputs/discriminator.h5')
+INFOoutput()
