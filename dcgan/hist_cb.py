@@ -63,9 +63,9 @@ def hist_callback(true, predict, epoch, path='./'):
 def get_kl_js(data_p, data_q, bins):
     pdfp = scipy.stats.rv_histogram(np.histogram(data_p, bins=bins))
     pdfq = scipy.stats.rv_histogram(np.histogram(data_q, bins=bins))
-    p = pdfp.pdf(np.linspace(min(data_p), max(data_p), 300))
-    q = pdfq.pdf(np.linspace(min(data_q), max(data_q), 300))
+    p = pdfp.pdf(bins)
+    q = pdfq.pdf(bins)
     kl_div = scipy.special.kl_div(p,q)
-    kl_div = kl_div[np.isfinite(kl_div)]
+    kl_div[kl_div==inf] == 0
     js_div = scipy.spatial.distance.jensenshannon(p, q)**2
     return np.sum(kl_div), js_div

@@ -40,16 +40,16 @@ class DCGAN():
         
         model.add(Dense(200, use_bias=False, input_shape=(3,)))
         model.add(Reshape((10,10,2)))
-        model.add(Conv2D(128, kernel_size=3, strides=1, padding='same', kernel_initializer='glorot_normal'))
+        model.add(Conv2D(128, kernel_size=3, strides=1, padding='same', kernel_initializer='glorot_uniform'))
         model.add(LeakyReLU(alpha=alpha))
     
-        model.add(Conv2D(64, kernel_size=3, strides=1, padding='same', kernel_initializer='glorot_normal'))
+        model.add(Conv2D(64, kernel_size=3, strides=1, padding='same', kernel_initializer='glorot_uniform'))
         model.add(LeakyReLU(alpha=alpha))
     
-        model.add(Conv2D(32, kernel_size=3, strides=1, padding='same', kernel_initializer='glorot_normal'))
+        model.add(Conv2D(32, kernel_size=3, strides=1, padding='same', kernel_initializer='glorot_uniform'))
         model.add(LeakyReLU(alpha=alpha))
     
-        model.add(Conv2D(16, kernel_size=3, strides=1, padding='same', kernel_initializer='glorot_normal'))
+        model.add(Conv2D(16, kernel_size=3, strides=1, padding='same', kernel_initializer='glorot_uniform'))
         
         model.add(Flatten())
         model.add(LeakyReLU(alpha=alpha))
@@ -61,24 +61,24 @@ class DCGAN():
     def make_generator(self, noise_size=100, alpha=0.2, activation='tanh'):
         model = Sequential()
         
-        model.add(Dense(200, input_shape=(noise_size,), kernel_initializer='glorot_normal'))
+        model.add(Dense(200, input_shape=(noise_size,), kernel_initializer='glorot_uniform'))
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=alpha))
         model.add(Reshape((10,10,2)))
     
-        model.add(Conv2DTranspose(128, kernel_size=2, strides=1, padding=('same'), use_bias=False, kernel_initializer='glorot_normal'))
+        model.add(Conv2DTranspose(128, kernel_size=3, strides=1, padding=('same'), use_bias=False, kernel_initializer='glorot_uniform'))
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=alpha))
    
-        model.add(Conv2DTranspose(64, kernel_size=2, strides=1, padding=('same'), use_bias=False, kernel_initializer='glorot_normal'))
+        model.add(Conv2DTranspose(64, kernel_size=3, strides=1, padding=('same'), use_bias=False, kernel_initializer='glorot_uniform'))
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=alpha))
 
-        model.add(Conv2DTranspose(32, kernel_size=2, strides=1, padding=('same'), use_bias=False, kernel_initializer='glorot_normal'))
+        model.add(Conv2DTranspose(32, kernel_size=3, strides=1, padding=('same'), use_bias=False, kernel_initializer='glorot_uniform'))
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=alpha))
 
-        model.add(Conv2DTranspose(16, kernel_size=3, strides=1, padding=('same'), use_bias=False, kernel_initializer='glorot_normal'))
+        model.add(Conv2DTranspose(16, kernel_size=3, strides=1, padding=('same'), use_bias=False, kernel_initializer='glorot_uniform'))
         model.add(BatchNormalization())
         model.add(LeakyReLU(alpha=alpha))
     
@@ -93,31 +93,29 @@ class DCGAN():
         model.add(self.discriminator)
         return model
     
-    def training(self, data, epochs, examples, batch_size=256, hist_callback=0):
+    def training(self, data, epochs, examples, batch_size=1024, hist_callback=0):
         start = time.time()
         seeds = self.seedGen(examples)
         for epoch in range(epochs):
             row_shape = len(data)
-            rnd_idx = np.random.choice(row_shape, size=int(batch_size/2), replace=False)
+            rnd_idx = np.random.choice(row_shape, size=int(batch_size), replace=False)
             batch_data = data[rnd_idx,:]
-            noise = tf.random.normal([batch_size, self.noise_size])
-            h_noise = tf.random.normal([int(batch_size/2), self.noise_size])
-            gen_data = self.generator(h_noise, training=True)
+            noise = tf.random.uniform([batch_size, self.noise_size])
+            gen_data = self.generator(noise, training=True)
             
             #Train discriminator
             self.discriminator.trainable = True
-            self.discriminator.train_on_batch(gen_data, tf.zeros(int(batch_size/2)))
-            self.discriminator.train_on_batch(batch_data, tf.ones(int(batch_size/2)))
+            self.discriminator.train_on_batch(gen_data, tf.zeros(int(batch_size)))
+            self.discriminator.train_on_batch(batch_data, tf.ones(int(batch_size)))
             
             #train generator
             self.discriminator.trainable = False
             self.gan.train_on_batch(noise, tf.ones(int(batch_size)))
             
             #callbacks
-            if (epoch+1) % 500 == 0 :
+            if (epoch+1) % verbose == 0 :
                 print ('Epoch {} of {}. [{} sec]'.format(epoch+1, epochs, time.time()-start, ))
-            if ((epoch+1) % 200 == 0) & hist_callback:
-                hist_cb.hist_callback(data, self.generator.predict(next(seeds), batch_size=512), epoch) 
+                hist_cb.hist_callback(data, self.generator.predict(next(seeds), batch_size=batch_size), epoch) 
                 
     def load_model(self, gen_model, disc_model):
         self.generator = load_model(gen_model)

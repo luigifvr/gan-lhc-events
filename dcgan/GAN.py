@@ -2,11 +2,6 @@ import tensorflow as tf
 from tensorflow.keras import layers
 from tensorflow.keras import backend
 
-def scaled_tanh(x):
-    x2 = backend.tanh(x)
-    scale = 5
-    return scale*x2
-
 def generatore(noise_size) :
     model = tf.keras.Sequential()
     model.add(layers.Dense(200, input_shape=(noise_size,), kernel_initializer='glorot_uniform'))

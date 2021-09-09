@@ -1,17 +1,18 @@
 import tensorflow as tf
 import numpy as np
-import readLHE
-import invariants
-import GAN
-import hist_cb
+from sklearn.preprocessing import MinMaxScaler, PowerTransformer, QuantileTransformer
+from sklearn.pipeline import make_pipeline
 import argparse
 import time
 import os
 import pickle
-from sklearn.preprocessing import MinMaxScaler, PowerTransformer, QuantileTransformer
-from sklearn.pipeline import make_pipeline
 
-parser = argparse.ArgumentParser(description=('pp -> t tbar GAN training'))
+import readLHE
+import invariants
+import GAN
+import hist_cb
+
+parser = argparse.ArgumentParser(description=('2 -> 2 GAN training'))
 parser.add_argument('file', help='path to LHE file')
 parser.add_argument('-b', '--batch', default='100', type=int)
 parser.add_argument('-i', '--iters', default='1', type=int)
@@ -88,6 +89,7 @@ for ev in evs:
     invar[i,2] = invariants.GetRapidity(init, ev)
     i += 1
 
+# Make pipeline PowerTransformer+MinMax
 pipeline = make_pipeline(PowerTransformer(standardize=True), MinMaxScaler((-1,1)))
 invar = pipeline.fit_transform(invar)
 
@@ -105,7 +107,10 @@ gan = GAN.gan_model(generator, discriminator)
 seeds = seedGen(examples, noise_size)
 start = time.time()
 
+# Histograms callback
 hist_cb.hist_callback(invar, generator.predict(next(seeds), batch_size=2048), 0, path=path)
+
+# Training
 for epoch in range(epochs):
     for it in range(iters):
         row_shape = len(invar)

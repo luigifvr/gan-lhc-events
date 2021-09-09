@@ -2,23 +2,27 @@ import yaml
 import json
 import argparse
 import invariants
-from readLHE import readEvent, readInit, NEvents
-import hyperopt
-from hyperopt import hp, fmin, STATUS_OK, Trials, tpe
-
 import numpy as np
-from dcgan import DCGAN
+
+import hyperopt
+from hyperopt import hp, fmin, STATUS_ok, Trials, tpe
 import scipy.special
 import scipy.stats
 import scipy.spatial
+from sklearn.preprocessing import MinMaxScaler, PowerTransformer, StandardScaler
+from sklearn.pipeline import make_pipeline
 
-def get_kl_js(data_p, data_q):
-    pdfp = scipy.stats.rv_histogram(np.histogram(data_p, bins=300))
-    pdfq = scipy.stats.rv_histogram(np.histogram(data_q, bins=300))
-    p = pdfp.pdf(np.linspace(min(data_p), max(data_p), 300))
-    q = pdfq.pdf(np.linspace(min(data_q), max(data_q), 300))
+import invariants
+from readLHE import readEvent, readInit, NEvents
+from dcgan import DCGAN
+
+def get_kl_js(data_p, data_q, bins):
+    pdfp = scipy.stats.rv_histogram(np.histogram(data_p, bins=bins))
+    pdfq = scipy.stats.rv_histogram(np.histogram(data_q, bins=bins))
+    p = pdfp.pdf(bins)
+    q = pdfq.pdf(bins)
     kl_div = scipy.special.kl_div(p,q)
-    kl_div = kl_div[np.isfinite(kl_div)]
+    kl_div[kl_div == inf] = 0
     js_div = scipy.spatial.distance.jensenshannon(p, q)**2
     return np.sum(kl_div), js_div
 
@@ -29,33 +33,43 @@ def hyperopt_training(dict_setup):
     pred = dcgan.generate_events(dict_setup['examples'])
     loss = 0
     for i in range(3):
-        loss += get_kl_js(data[:,i], pred[:,i])[0]
+        loss += get_kl_js(data[:,i], pred[:,i], dict_setup['bins'])[0]
     ret = {'loss': loss/3, 'status': STATUS_OK}
     return ret
 
-def build_and_process(file):
-    evs = readEvent(file)
-    init = readInit(file)
-    invar = np.zeros((NEvents(file),3))
+def build_and_process(setup):
+    evs = readEvent(setup["file"])
+    init = readInit(setup["file"])
+    invar = np.zeros((NEvents(setup["file"]),3))
     i = 0
     for ev in evs:
         invar[i,0] = invariants.GetEnergySquared(ev)
         invar[i,1] = invariants.GetMandelT(ev)
         invar[i,2] = invariants.GetRapidity(init, ev)
         i += 1
-    invar[:,0] = 2*(invar[:,0]-min(invar[:,0]))/(max(invar[:,0])-min(invar[:,0])) - 1
-    invar[:,1] = 2*(invar[:,1]-min(invar[:,1]))/(max(invar[:,1])-min(invar[:,1])) - 1
-    invar[:,2] = 2*(invar[:,2]-min(invar[:,2]))/(max(invar[:,2])-min(invar[:,2])) - 1 
-    #add preprocessing
+    if setup["preprocessing"] == "std":
+        pipeline = make_pipeline(StandardScaler())
+        invar = pipeline.fit_transform(invar)
+    if setup["preprocessing"] == "minmax":
+        pipeline = make_pipeline(PowerTransformer(Standardize=True), MinMaxScaler((-1,1)))
+        invar = pipeline.fit_transform(invar)
+
+    #save pipeline
+    with open(setup["output"]+'pipeline.pickle', 'wb') as pip:
+        pickle.dump(pipeline, pip) 
     return invar
 
 if __name__=='__main__':
-    parser = argparse.ArgumentParser(description=('pp -> ttbar GAN training'))
+    parser = argparse.ArgumentParser(description=('2 -> 2 GAN training'))
     parser.add_argument('setup', help='path to setup file')
     parser.add_argument('-e', '--evals', default='100', type=int) 
     args = parser.parse_args()  
     setup_name = args.setup
     max_evals = args.evals
+
+    print("INFO: Starting Hyperopt run: \n")
+    print("INFO: Using SETUP file: {} \n".format(setup_name))
+    print("INFO: Number of evaluations: {} \n".format(max_evals))
 
     setup_dict = yaml.load(open(setup_name), Loader=yaml.FullLoader)
     for key, val in setup_dict.items():
