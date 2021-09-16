@@ -4,6 +4,12 @@
 
 # GAN LHC 2→2 events
 This is a repo for a generative LHC events model. The output of the network is a tuple which define the event in terms of Mandelstam invariants **s**, **t**, and the pseudorapidity in the parton scattering reference frame **y**.
+
+These results are tied to a Master's thesis project and the taken steps for its developing are collected in notebooks stored in `./dcgan/notebooks`.
+1. Initial results ✔️
+2. Hyperopt results ✖️
+3. Channels results ✖️
+
 ### Training of the deep convolutional GAN:
 To start the training, initially generate a LHE file using MadGraph5. Then, it is possible to call `training.py` to train the model. To transform the `.lhe` file into an array, the script uses `read_LHE.py` to save the particles of each event and then `invariants.py` to calculate the input features.
 
