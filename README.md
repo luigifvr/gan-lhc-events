@@ -1,6 +1,6 @@
 [![TF](https://img.shields.io/badge/TensorFlow-v2.4.1-orange.svg)](https://shields.io/)
 [![MG5](https://img.shields.io/badge/MG5_@NLO-v2.9.2-blue.svg)](https://shields.io/)
-[![Python](https://img.shields.io/badge/Python>-v3.7-brightgreen.svg)](https://shields.io/)
+[![Python](https://img.shields.io/badge/Python-v3.7-brightgreen.svg)](https://shields.io/)
 
 # GAN LHC 2→2 events
 This is a repo for a generative LHC events model. The output of the network is a tuple which define the event in terms of Mandelstam invariants **s**, **t**, and the pseudorapidity in the parton scattering reference frame **y**.
