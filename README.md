@@ -7,7 +7,7 @@ This is a repo for a generative LHC events model. The output of the network is a
 
 These results are tied to a Master's thesis project and the taken steps for its developing are collected in notebooks stored in `./dcgan/notebooks`.
 1. Initial results ✔️
-2. Hyperopt results ✖️
+2. Hyperopt results ✔️
 3. Channels results ✖️
 
 ### Training of the deep convolutional GAN:
